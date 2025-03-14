@@ -521,7 +521,7 @@ def integrate_tools(agents):
     return agents
 
 
-def main():
+def main(pmt):
     agents = setup_simple_agents()
     agents = integrate_tools(agents)
     user_proxy = agents["user_proxy"]
@@ -532,7 +532,8 @@ def main():
     print("Enter your request below:")
 
     while True:
-        user_input = input("Your request: ")
+        # user_input = input("Your request: ")
+        user_input = pmt
 
         if user_input.lower() == 'exit':
             print("Goodbye!")
