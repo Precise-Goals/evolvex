@@ -13,7 +13,12 @@ from langchain_community.vectorstores import Chroma
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_community.document_loaders import TextLoader, DirectoryLoader, CSVLoader, PyPDFLoader
-os.getenv["TOGETHER_API_KEY"]
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+os.environ["TOGETHER_API_KEY"] = os.getenv("TOGETHER_API")
 
 
 class SimpleTracer:
@@ -460,47 +465,38 @@ class SimpleUserAgent:
 
 def setup_simple_agents():
     manager = SimpleAgent(name="Manager", system_message="""You are the Managerial Agent that coordinates all tasks. Your responsibilities:
-        1. Delegate tasks to specialized agents
-        2. Ensure tasks are executed in the correct order
-        3. Synthesize results from different agents
-        4. Keep track of the overall progress
-        """)
+    1. Delegate tasks to specialized agents
+    2. Ensure tasks are executed in the correct order
+    3. Synthesize results from different agents
+    4. Keep track of the overall progress
+    """)
     code_completer = SimpleAgent(name="CodeCompleter", system_message="""You are the Code Completion Agent. Your job is to:
-        1. Suggest code completions based on context
-        2. Generate code snippets when requested
-        3. Implement requested features
-        4. Use StarCoder API when possible for higher accuracy completions
-        """)
+    1. Suggest code completions based on context
+    2. Generate code snippets when requested
+    3. Implement requested features
+    4. Use StarCoder API when possible for higher accuracy completions
+    """)
     bug_detector = SimpleAgent(name="BugDetector", system_message="""You are the Bug Detection & Fixing Agent. Your job is to:
-        1. Scan code for errors, bugs, and code smells
-        2. Suggest fixes for identified issues
-        3. Improve code quality and performance
-        4. Use StarCoder API for advanced bug detection and testing
-        """)
+    1. Scan code for errors, bugs, and code smells
+    2. Suggest fixes for identified issues
+    3. Improve code quality and performance
+    4. Use StarCoder API for advanced bug detection and testing
+    """)
     documentation_agent = SimpleAgent(name="DocumentationAgent", system_message="""You are the Documentation Agent. Your job is to:
-        1. Generate docstrings for functions and classes
-        2. Create README files
-        3. Document APIs
-        4. Ensure documentation follows best practices
-        """)
+    1. Generate docstrings for functions and classes
+    2. Create README files
+    3. Document APIs
+    4. Ensure documentation follows best practices
+    """)
     rag_agent = SimpleAgent(name="RAGAgent", system_message="""You are the RAG (Retrieval Augmented Generation) Agent. Your job is to:
-        1. Load and index knowledge base documents
-        2. Retrieve relevant information from the knowledge base
-        3. Use retrieved information to provide context for code generation
-        4. Answer questions using the knowledge base
-        """)
+    1. Load and index knowledge base documents
+    2. Retrieve relevant information from the knowledge base
+    3. Use retrieved information to provide context for code generation
+    4. Answer questions using the knowledge base
+    """)
     user_proxy = SimpleUserAgent(name="User")
-    return {"manager": manager, "code_completer": code_completer, "bug_detector": bug_detector, "documentation_agent": documentation_agent, "rag_agent": rag_agent, "user_proxy": user_proxy}
-
-
-class LangChainToolWrapper:
-    def __init__(self, agent, name, description):
-        self.agent = agent
-        self.name = name
-        self.description = description
-
-    def run(self, query):
-        return self.agent.run(query)
+    return {"manager": manager, "code_completer": code_completer, "bug_detector": bug_detector,
+            "documentation_agent": documentation_agent, "rag_agent": rag_agent, "user_proxy": user_proxy}
 
 
 def integrate_tools(agents):
@@ -530,11 +526,24 @@ def main():
     agents = integrate_tools(agents)
     user_proxy = agents["user_proxy"]
     manager = agents["manager"]
-    user_proxy.initiate_chat(manager, message="""
-    I need help with a Python project. I'm building a data processing pipeline 
-    that needs to read CSV files, process them, and generate visualizations.
-    Can you help me plan and implement this?
-    """)
+
+    print("Welcome to the Agent System!")
+    print("Type 'exit' to quit the program")
+    print("Enter your request below:")
+
+    while True:
+        user_input = input("Your request: ")
+
+        if user_input.lower() == 'exit':
+            print("Goodbye!")
+            break
+
+        if user_input.strip():  # Check if input is not empty
+            user_proxy.initiate_chat(manager, message=user_input)
+        else:
+            print("Please enter a valid request")
+
+        print("\nEnter another request or type 'exit' to quit:")
 
 
 if __name__ == "__main__":
