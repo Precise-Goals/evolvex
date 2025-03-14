@@ -8,6 +8,7 @@ from main import main
 from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # Load environment variables
 load_dotenv()
@@ -25,4 +26,3 @@ def chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
-    CORS(app)
