@@ -3,7 +3,7 @@
   --b-c: #000000;
 }
 
-main::after {
+/* main::after {
   background: var(--w-c);
   display: block;
   content: " ";
@@ -12,7 +12,7 @@ main::after {
   position: absolute;
   bottom: 0;
   right: 0;
-}
+} */
 .sound-toggle {
   background-color: var(--b-c);
   color: var(--w-c);
