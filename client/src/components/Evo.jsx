@@ -1,6 +1,6 @@
 import Spline from "@splinetool/react-spline";
 
-export default function Robo() {
+export default function Evo() {
   return (
     <main
       style={{
@@ -19,9 +19,8 @@ export default function Robo() {
           zIndex: "0",
           objectFit: "contain",
         }}
-        scene="https://prod.spline.design/iYLQvYvFXy-r9yv4/scene.splinecode"
+        scene="https://prod.spline.design/weZFL7q2VUtry6JO/scene.splinecode"
       />
-      <p className="scl">SCROLL DOWN!</p>
     </main>
   );
 }

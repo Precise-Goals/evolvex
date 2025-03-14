@@ -10,6 +10,7 @@ import { Hero } from "./components/Hero";
 import { CiVolumeHigh, CiVolumeMute } from "react-icons/ci";
 
 import mp3 from "./assets/bg.mp3";
+import { Documentation } from "./components/Documentation";
 function App() {
   const [isMuted, setIsMuted] = useState(true);
 
@@ -50,9 +51,12 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Hero />} />
-          <Route path="/evolvex-404-not-found" element={<File404 />} />
+          <Route path="*" element={<File404 />} />
           <Route path="/evolvex-code-agentic-ai" element={<Code />} />
-          <Route path="/evolvex-under-development" element={<UnderDev />} />
+          <Route path="/evolvex-creative-agentic-ai" element={<UnderDev />} />
+          <Route path="/evolvex-student-agentic-ai" element={<UnderDev />} />
+          <Route path="/evolvex-business-agentic-ai" element={<UnderDev />} />
+          <Route path="/evolvex-documentation" element={<Documentation />} />
         </Routes>
         <Footer />
       </BrowserRouter>

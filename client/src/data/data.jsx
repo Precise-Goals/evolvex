@@ -1,19 +1,19 @@
 export const routeData = [
   {
     id: 1,
-    route: "/evolvex-code-ai",
+    route: "/evolvex-code-agentic-ai",
   },
   {
     id: 2,
-    route: "/evolvex-student-ai",
+    route: "/evolvex-student-agentic-ai",
   },
   {
     id: 3,
-    route: "/evolvex-business-ai",
+    route: "/evolvex-business-agentic-ai",
   },
   {
     id: 4,
-    route: "/evolvex-creative-ai",
+    route: "/evolvex-creative-agentic-ai",
   },
   {
     id: 5,

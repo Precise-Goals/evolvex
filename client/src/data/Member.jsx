@@ -7,43 +7,29 @@ export const memberData = [
   {
     id: 1,
     name: "Sarthak Patil",
-    role: "Core Project Programmer",
+    role: "Core Programmer",
     email: "sarthakpatil.ug@gmail.com",
     av: u1,
+  },
+  {
+    id: 2,
+    name: "Gaurav Chaudhari",
+    role: "Backend Programmer",
+    email: "gauravchau2412@gmail.com",
+    av: u2,
+  },
+  {
+    id: 3,
+    name: "Prathamesh Kolhe",
+    role: "Backend Programmer",
+    email: "prathameshkolhe6099@gmail.com",
+    av: u3,
   },
   {
     id: 4,
     name: "Anushka Singh",
     role: "Problem Researcher",
     email: "singhanushkaofficial04@gmail.com",
-    av: u3,
-  },
-];
-
-const yus = [
-  {
-    id: 1,
-    name: "Sarthak Patil",
-    role: "Core Developer",
-    department: "CSE",
-    email: "sarthakpatil.ug@gmail.com",
-    img: u1,
-  },
-  {
-    id: 2,
-    name: "Damodhar Ojha",
-    role: "Core Debugger",
-    department: "CSE",
-    email: "damodharojha72@gmail.com",
-    img: u2,
-  },
-
-  {
-    id: 4,
-    name: "Tejas Patil",
-    role: "Presentation Handler",
-    department: "CE",
-    email: "tejpatil2006@gmail.com",
-    img: u4,
+    av: u4,
   },
 ];

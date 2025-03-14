@@ -2,9 +2,9 @@
 * {
   margin: 0;
   box-sizing: border-box;
+  font-family: "Poppins";
   padding: 0;
 }
-:root {
-  --w-c: #f1efe7;
-  --b-c: #000000;
+#root{
+  background-color: var(--w-c);
 }
