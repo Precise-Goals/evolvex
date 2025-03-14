@@ -23,7 +23,7 @@ export const Code = () => {
 
   return (
     <div>
-      <form onSubmit={handleSubmit}>
+      {/* <form onSubmit={handleSubmit}>
         <input
           type="text"
           value={input}
@@ -41,7 +41,7 @@ export const Code = () => {
             <hr />
           </div>
         ))}
-      </div>
+      </div> */}
     </div>
   );
 };
