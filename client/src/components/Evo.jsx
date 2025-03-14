@@ -19,7 +19,7 @@ export default function Evo() {
           zIndex: "0",
           objectFit: "contain",
         }}
-        scene="https://prod.spline.design/weZFL7q2VUtry6JO/scene.splinecode"
+        scene="/EVO.splinecode"
       />
     </main>
   );
