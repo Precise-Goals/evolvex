@@ -334,3 +334,42 @@ img.cc2 {
 .content {
   margin: 6em 0;
 }
+.f4 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5% 6%;
+}
+
+.f4 h1 {
+  font-size: 10rem;
+  font-family: "Archivo Black";
+  letter-spacing: -0.07em;
+  background: url(https://img.freepik.com/free-vector/realistic-colorful-galaxy-background_23-2148965681.jpg);
+  background-clip: text;
+  color: transparent;
+  filter: brightness(0.75);
+}
+
+.f4 p {
+  font-size: 25px;
+  font-weight: 200;
+  letter-spacing: 0.02em;
+  font-style: italic;
+}
+
+.f4 a {
+  color: var(--w-c);
+  font-size: 20px;
+  background: var(--b-c);
+  padding: 0.75em 1.75em;
+  margin: 2% 0 0 0;
+  transition: all ease 0.25s;
+  border: 1px solid var(--b-c);
+}
+
+.f4 a:hover {
+  background: var(--w-c);
+  color: var(--b-c);
+}
