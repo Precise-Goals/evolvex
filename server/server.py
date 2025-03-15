@@ -1,28 +1,21 @@
 # server.py
 from flask import Flask, request, jsonify
-import os
-import requests
-import json
-from dotenv import load_dotenv
 from main import main
-from flask_cors import CORS
+from flask_cors import CORS  # Add CORS for cross-origin requests
 
 app = Flask(__name__)
-CORS(app)
-
-# Load environment variables
-load_dotenv()
-os.environ["TOGETHER_API_KEY"] = os.getenv("TOGETHER_API")
-
-# Your existing code here (e.g., classes and functions)
+CORS(app)  # Allow frontend to access backend from a different domain
 
 
-@app.route('/api/chat', methods=['POST'])
+@app.route('/api/code', methods=['POST'])
 def chat():
-    user_input = request.json.get('input')
-    response = main(user_input)
-    return jsonify({"response": response})
+    try:
+        user_input = request.json.get('input')  # Matches frontend payload
+        response = main(user_input)
+        return jsonify({"response": response})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000, debug=False)  # Production-ready
