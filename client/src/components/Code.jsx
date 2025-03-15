@@ -19,9 +19,9 @@ export const Code = () => {
     setResponse("");
 
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/code`, {
-        input,
-      });
+      const apiUrl =
+        import.meta.env.VITE_API_URL || "https://evolvex.onrender.com"; // Fallback
+      const res = await axios.post(`${apiUrl}/api/code`, { input });
       setResponse(res.data.response);
     } catch (err) {
       setError("Error communicating with the server: " + err.message);
