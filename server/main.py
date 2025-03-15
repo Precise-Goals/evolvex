@@ -1,4 +1,5 @@
 import os
+import sys
 import requests
 import json
 from typing import List, Dict, Any, Optional
@@ -14,7 +15,8 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_community.document_loaders import TextLoader, DirectoryLoader, CSVLoader, PyPDFLoader
 
-os.environ["TOGETHER_API_KEY"] = "tgp_v1_yp-RMrpA6WdJYr83hTJjV4ikYqbLJ-nDKShztoazfuM"
+os.environ["TOGETHER_API_KEY"] = str(os.getenv("TOGETHER_API"))
+print(os.environ["TOGETHER_API_KEY"])
 
 
 class SimpleTracer:
@@ -140,9 +142,22 @@ class RAGSystem:
 class RAGLoader(BaseTool):
     name: str = "rag_loader"
     description: str = "Loads documents into the RAG system"
-    # Declare as Pydantic field
-    _rag_system: Any = Field(
-        default=None, description="The RAG system instance")
+
+    def __init__(self, rag_system):
+        super().__init__()
+        self._rag_system = rag_system
+
+    def _run(self, docs_dir: str = "") -> str:
+        if docs_dir:
+            self._rag_system.docs_dir = docs_dir
+        return self._rag_system.load_documents()
+
+    def _arun(self, docs_dir: str):
+        raise NotImplementedError("RAGLoader does not support async")
+
+    class RAGLoader(BaseTool):
+        name: str = "rag_loader"
+        description: str = "Loads documents into the RAG system"
 
     def __init__(self, rag_system):
         super().__init__()
@@ -160,9 +175,6 @@ class RAGLoader(BaseTool):
 class RAGQueryTool(BaseTool):
     name: str = "rag_query"
     description: str = "Queries the RAG system for information based on a question"
-    # Declare as Pydantic field
-    _rag_system: Any = Field(
-        default=None, description="The RAG system instance")
 
     def __init__(self, rag_system):
         super().__init__()
@@ -216,7 +228,6 @@ class StarBugDetection(BaseTool):
         4. Security vulnerabilities
         5. Suggested fixes
         Analysis:
-        {code}
         """
         data = {"model": "togethercomputer/StarCoder", "prompt": prompt,
                 "max_tokens": 700, "temperature": 0.2, "top_p": 0.95, "stop": ["<|endoftext|>"]}
@@ -249,7 +260,6 @@ class StarCodeTesting(BaseTool):
         2. Edge cases
         3. Error handling
         Test code:
-        {code}
         """
         data = {"model": "togethercomputer/StarCoder", "prompt": prompt,
                 "max_tokens": 800, "temperature": 0.2, "top_p": 0.95, "stop": ["<|endoftext|>"]}
@@ -432,60 +442,57 @@ class SimpleAgent:
         if history is None:
             history = []
         history.append(f"User: {message}")
+
         if self.name == "Manager":
             return self._manager_run(message, history)
         else:
             return self._specialized_run(message, history)
 
     def _manager_run(self, message, history):
-        prompt = f"""
-        System: {self.system_message}
-        Available agents:
-        - CodeCompleter: Handles code generation and completion
-        - BugDetector: Finds and fixes bugs in code
-        - DocumentationAgent: Creates documentation
-        - RAGAgent: Handles knowledge base queries
-        
-        Message: {message}
-        
-        Decide which agent should handle this request and provide a brief plan.
-        Response format:
-        [DELEGATE:AgentName]
-        Plan: [Your plan here]
-        """
-        response = self.llm(prompt)
-        try:
-            delegate_line = response.split('\n')[0]
-            agent_name = delegate_line.strip('[]').split(':')[1]
-            plan = '\n'.join(response.split('\n')[1:])
-            if agent_name in self.all_agents and agent_name != "Manager":
+        if " and " in message.lower() or "multiple" in message.lower():
+            prompt = f"""
+            System: {self.system_message}
+            Available agents:
+            - CodeCompleter: Handles code generation and completion
+            - BugDetector: Finds and fixes bugs in code
+            - DocumentationAgent: Creates documentation
+            - RAGAgent: Handles knowledge base queries
+            
+            Message: {message}
+            Respond with only: [DELEGATE:AgentName] (choose the most appropriate agent)
+            """
+            response = self.llm(prompt).strip()
+            agent_name = "code_completer"  # Default to correct key
+            agent_name_raw = agent_name  # Default raw name for output
+
+            if response.startswith("[DELEGATE:") and response.endswith("]"):
+                agent_name_raw = response[10:-1].strip()
+                agent_name = agent_name_raw.lower().replace("completer", "completer")
+
+            if agent_name in self.all_agents and agent_name != "manager":
                 delegated_response = self.all_agents[agent_name].run(
                     message, history)
-                return f"Manager: Delegated to {agent_name}\n{plan}\n\n{agent_name}'s Response:\n{delegated_response}"
+                return f"Manager: Delegated to {agent_name_raw}\n{delegated_response}"
             else:
-                return f"Manager: I'll handle this directly\n{response}"
-        except Exception as e:
-            return f"Manager: Error in delegation - {str(e)}\nI'll process this directly:\n{self._specialized_run(message, history)}"
+                return f"Manager: Invalid agent '{agent_name_raw}', handling directly\n{self._execute_simple_task(message, history)}"
+        else:
+            return self._execute_simple_task(message, history)
+
+    def _execute_simple_task(self, message, history):
+        prompt = f"""
+        System: I am the Manager agent with basic coding capabilities.
+        Message: {message}
+        Provide a concise response with code if requested, no extra commentary.
+        """
+        return self.llm(prompt).strip()
 
     def _specialized_run(self, message, history):
-        tools_str = "\n".join(
-            [f"- {t['name']}: {t['description']}" for t in self.tools])
         prompt = f"""
         System: {self.system_message}
-        Available tools:
-        {tools_str}
-        Conversation History:
-        {chr(10).join(history)}
-        Current Message: {message}
-        Response as {self.name}:
+        Message: {message}
+        Provide a concise response with code if requested, no extra commentary.
         """
-        response = self.llm(prompt)
-        if self.tools and any(tool['name'] in response for tool in self.tools):
-            for tool in self.tools:
-                if tool['name'] in response:
-                    tool_result = tool['func'](message)
-                    return f"{response}\nTool Result ({tool['name']}):\n{tool_result}"
-        return response
+        return self.llm(prompt).strip()
 
 
 class SimpleUserAgent:
@@ -501,38 +508,21 @@ class SimpleUserAgent:
 
 def setup_simple_agents():
     agents = {}
-    agents["manager"] = SimpleAgent(name="Manager", system_message="""You are the Managerial Agent that coordinates all tasks. Your responsibilities:
-    1. Delegate tasks to specialized agents
-    2. Ensure tasks are executed in the correct order
-    3. Synthesize results from different agents
-    4. Keep track of the overall progress
-    """)
-    agents["code_completer"] = SimpleAgent(name="CodeCompleter", system_message="""You are the Code Completion Agent. Your job is to:
-    1. Suggest code completions based on context
-    2. Generate code snippets when requested
-    3. Implement requested features
-    4. Use StarCoder API when possible for higher accuracy completions
-    """)
-    agents["bug_detector"] = SimpleAgent(name="BugDetector", system_message="""You are the Bug Detection & Fixing Agent. Your job is to:
-    1. Scan code for errors, bugs, and code smells
-    2. Suggest fixes for identified issues
-    3. Improve code quality and performance
-    4. Use StarCoder API for advanced bug detection and testing
-    """)
-    agents["documentation_agent"] = SimpleAgent(name="DocumentationAgent", system_message="""You are the Documentation Agent. Your job is to:
-    1. Generate docstrings for functions and classes
-    2. Create README files
-    3. Document APIs
-    4. Ensure documentation follows best practices
-    """)
-    agents["rag_agent"] = SimpleAgent(name="RAGAgent", system_message="""You are the RAG (Retrieval Augmented Generation) Agent. Your job is to:
-    1. Load and index knowledge base documents
-    2. Retrieve relevant information from the knowledge base
-    3. Use retrieved information to provide context for code generation
-    4. Answer questions using the knowledge base
-    """)
+
+    agents["manager"] = SimpleAgent(
+        name="Manager", system_message="You are the Managerial Agent that coordinates tasks or executes simple ones directly.")
+    agents["code_completer"] = SimpleAgent(
+        name="CodeCompleter", system_message="You are the Code Completion Agent for generating code snippets.")
+    agents["bug_detector"] = SimpleAgent(
+        name="BugDetector", system_message="You are the Bug Detection Agent for finding and fixing code issues.")
+    agents["documentation_agent"] = SimpleAgent(
+        name="DocumentationAgent", system_message="You are the Documentation Agent for creating documentation.")
+    agents["rag_agent"] = SimpleAgent(
+        name="RAGAgent", system_message="You are the RAG Agent for knowledge base queries.")
+
     for agent in agents.values():
         agent.all_agents = agents
+
     agents["user_proxy"] = SimpleUserAgent(name="User")
     return agents
 
@@ -544,27 +534,19 @@ def integrate_tools(agents):
                                "description": "Analyze code for bugs using Together AI StarCoder API", "func": StarBugDetection()._run}
     star_testing_tool = {"name": "star_code_testing",
                          "description": "Generate test cases using Together AI StarCoder API", "func": StarCodeTesting()._run}
-    rag_system = RAGSystem()
-    rag_query_tool_instance = RAGQueryTool(rag_system)
-    rag_loader_tool_instance = RAGLoader(rag_system)
-    rag_query_tool = {"name": "rag_query", "description": "Query the RAG system for information",
-                      "func": rag_query_tool_instance._run}
-    rag_loader_tool = {"name": "rag_loader",
-                       "description": "Load documents into the RAG system", "func": rag_loader_tool_instance._run}
+    # rag_system = RAGSystem()
+    # rag_query_tool_instance = RAGQueryTool(rag_system)
+    # rag_loader_tool_instance = RAGLoader(rag_system)
+    # rag_query_tool = {"name": "rag_query", "description": "Query the RAG system for information",
+    #                   "func": rag_query_tool_instance._run}
+    # rag_loader_tool = {"name": "rag_loader",
+    #                    "description": "Load documents into the RAG system", "func": rag_loader_tool_instance._run}
+    # agents["rag_agent"].register_tool(rag_query_tool)
+    # agents["rag_agent"].register_tool(rag_loader_tool)
     agents["code_completer"].register_tool(star_completion_tool)
     agents["bug_detector"].register_tool(star_bug_detection_tool)
     agents["bug_detector"].register_tool(star_testing_tool)
-    agents["rag_agent"].register_tool(rag_query_tool)
-    agents["rag_agent"].register_tool(rag_loader_tool)
     return agents
-
-
-def process_request(user_input):
-    agents = setup_simple_agents()
-    agents = integrate_tools(agents)
-    manager = agents["manager"]
-    response = manager.run(user_input)
-    return response
 
 
 def main():
@@ -579,13 +561,16 @@ def main():
 
     while True:
         user_input = input("Your request: ")
+
         if user_input.lower() == 'exit':
             print("Goodbye!")
             break
+
         if user_input.strip():
             user_proxy.initiate_chat(manager, message=user_input)
         else:
             print("Please enter a valid request")
+
         print("\nEnter another request or type 'exit' to quit:")
 
 
