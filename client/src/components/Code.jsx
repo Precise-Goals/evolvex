@@ -1,64 +1,52 @@
-import React, { useState } from "react";
-import axios from "axios";
+import React, { useState } from 'react';
+import axios from 'axios';
 
 export const Code = () => {
-  const [input, setInput] = useState("");
-  const [response, setResponse] = useState("");
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim()) {
-      setError("Please enter a request");
-      return;
-    }
-
     setLoading(true);
-    setError("");
-    setResponse("");
+    setError(null);
+    setOutput('');
 
     try {
-      const apiUrl =
-        import.meta.env.VITE_API_URL || "https://evolvex.onrender.com"; // Fallback
-      const res = await axios.post(`${apiUrl}/api/code`, { input });
-      setResponse(res.data.response);
+      const response = await axios.post('https://evolvex.onrender.com/api/code', {
+        input: input,
+      });
+      setOutput(response.data.output);
     } catch (err) {
-      setError("Error communicating with the server: " + err.message);
+      setError('Failed to process request: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
-      <h1>Code Agent</h1>
+    <div>
+      <h2>Code Processing</h2>
       <form onSubmit={handleSubmit}>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Enter your coding request (e.g., 'Write a Python function to add two numbers')"
+          placeholder="Enter your request (e.g., 'Generate a Python function')"
           rows="5"
-          style={{ width: "100%", marginBottom: "10px" }}
+          cols="50"
         />
+        <br />
         <button type="submit" disabled={loading}>
-          {loading ? "Processing..." : "Submit"}
+          {loading ? 'Processing...' : 'Submit'}
         </button>
       </form>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {response && (
-        <div style={{ marginTop: "20px" }}>
-          <h2>Response:</h2>
-          <pre
-            style={{
-              background: "#f4f4f4",
-              padding: "10px",
-              borderRadius: "5px",
-            }}
-          >
-            {response}
-          </pre>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {output && (
+        <div>
+          <h3>Output:</h3>
+          <pre>{output}</pre>
         </div>
       )}
     </div>
