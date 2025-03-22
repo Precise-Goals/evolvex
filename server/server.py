@@ -28,6 +28,7 @@ CORS(app, resources={
     r"/api/*": {
         "origins": [
             "http://localhost:5173/evolvex-code-agentic-ai",
+            "http://localhost:5173",
             "https://evolvexai.vercel.app"
         ]
     }
