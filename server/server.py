@@ -23,7 +23,16 @@ print(os.environ["TOGETHER_API_KEY"])
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "https://evolvexai.vercel.app"}})  # Restrict CORS to your frontend
+# Restrict CORS to your frontend
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "http://localhost:5173/evolvex-code-agentic-ai",
+            "https://evolvexai.vercel.app"
+        ]
+    }
+})
+
 
 class SimpleTracer:
     def __init__(self, project_name="agent_system_project"):
@@ -38,7 +47,9 @@ class SimpleTracer:
                 pass
         return TracerContext()
 
+
 tracer = SimpleTracer(project_name="agent_system_project")
+
 
 class CustomTogetherLLM:
     def __init__(self, model="mistralai/Mixtral-8x7B-Instruct-v0.1", temperature=0.7, max_tokens=2048):
@@ -48,11 +59,13 @@ class CustomTogetherLLM:
         self.api_key = os.environ.get("TOGETHER_API_KEY")
 
     def _call_api(self, prompt):
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {self.api_key}",
+                   "Content-Type": "application/json"}
         API_ENDPOINT = "https://api.together.xyz/v1/completions"
         data = {"model": self.model, "prompt": prompt, "max_tokens": self.max_tokens,
                 "temperature": self.temperature, "top_p": 0.95, "stop": ["<|endoftext|>"]}
-        response = requests.post(API_ENDPOINT, headers=headers, data=json.dumps(data))
+        response = requests.post(
+            API_ENDPOINT, headers=headers, data=json.dumps(data))
         if response.status_code == 200:
             result = response.json()
             return result.get("choices", [{}])[0].get("text", "")
@@ -62,8 +75,10 @@ class CustomTogetherLLM:
     def __call__(self, prompt, *args, **kwargs):
         return self._call_api(prompt)
 
+
 def get_llm(temperature=0.7, model="mistralai/Mixtral-8x7B-Instruct-v0.1"):
     return CustomTogetherLLM(model=model, temperature=temperature, max_tokens=2048)
+
 
 class SimpleEmbeddings:
     def __init__(self, model="togethercomputer/m2-bert-80M-8k-retrieval"):
@@ -78,7 +93,10 @@ class SimpleEmbeddings:
         import numpy as np
         return np.random.rand(384)
 
-embeddings = SimpleEmbeddings(model="togethercomputer/m2-bert-80M-8k-retrieval")
+
+embeddings = SimpleEmbeddings(
+    model="togethercomputer/m2-bert-80M-8k-retrieval")
+
 
 class RAGSystem:
     def __init__(self, docs_dir="./knowledge_base"):
@@ -91,20 +109,27 @@ class RAGSystem:
         try:
             loaders = []
             if os.path.exists(f"{self.docs_dir}/text"):
-                loaders.append(DirectoryLoader(f"{self.docs_dir}/text", loader_cls=TextLoader))
+                loaders.append(DirectoryLoader(
+                    f"{self.docs_dir}/text", loader_cls=TextLoader))
             if os.path.exists(f"{self.docs_dir}/csv"):
-                loaders.append(DirectoryLoader(f"{self.docs_dir}/csv", loader_cls=CSVLoader))
+                loaders.append(DirectoryLoader(
+                    f"{self.docs_dir}/csv", loader_cls=CSVLoader))
             if os.path.exists(f"{self.docs_dir}/pdf"):
-                loaders.append(DirectoryLoader(f"{self.docs_dir}/pdf", loader_cls=PyPDFLoader))
+                loaders.append(DirectoryLoader(
+                    f"{self.docs_dir}/pdf", loader_cls=PyPDFLoader))
             documents = []
             for loader in loaders:
                 documents.extend(loader.load())
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000, chunk_overlap=200)
             splits = text_splitter.split_documents(documents)
-            self.vectorstore = Chroma.from_documents(documents=splits, embedding=embeddings)
-            base_retriever = self.vectorstore.as_retriever(search_kwargs={"k": 5})
+            self.vectorstore = Chroma.from_documents(
+                documents=splits, embedding=embeddings)
+            base_retriever = self.vectorstore.as_retriever(
+                search_kwargs={"k": 5})
             compressor = LLMChainExtractor.from_llm(self.llm)
-            self.retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=base_retriever)
+            self.retriever = ContextualCompressionRetriever(
+                base_compressor=compressor, base_retriever=base_retriever)
             return f"Successfully loaded {len(splits)} document chunks into the RAG system."
         except Exception as e:
             return f"Error loading documents: {str(e)}"
@@ -122,10 +147,12 @@ class RAGSystem:
         {question}
         Answer:
         """
-        prompt = PromptTemplate(template=template, input_variables=["context", "question"])
+        prompt = PromptTemplate(template=template, input_variables=[
+                                "context", "question"])
         chain = LLMChain(llm=self.llm, prompt=prompt)
         response = chain.run(context=context, question=question)
         return {"answer": response, "sources": [{"content": doc.page_content, "metadata": doc.metadata} for doc in docs]}
+
 
 class RAGLoader(BaseTool):
     name: str = "rag_loader"
@@ -143,6 +170,7 @@ class RAGLoader(BaseTool):
     def _arun(self, docs_dir: str):
         raise NotImplementedError("RAGLoader does not support async")
 
+
 class RAGQueryTool(BaseTool):
     name: str = "rag_query"
     description: str = "Queries the RAG system for information based on a question"
@@ -158,16 +186,19 @@ class RAGQueryTool(BaseTool):
     def _arun(self, query: str):
         raise NotImplementedError("RAGQueryTool does not support async")
 
+
 class StarCodeCompletion(BaseTool):
     name: str = "star_code_completion"
     description: str = "Uses Together AI StarCoder API to complete code with higher accuracy"
 
     def _run(self, code_context: str) -> str:
-        headers = {"Authorization": f"Bearer {os.environ.get('TOGETHER_API_KEY')}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {os.environ.get('TOGETHER_API_KEY')}", "Content-Type": "application/json"}
         STARCODER_API_ENDPOINT = "https://api.together.xyz/v1/completions"
         data = {"model": "togethercomputer/StarCoder", "prompt": code_context,
                 "max_tokens": 500, "temperature": 0.3, "top_p": 0.95, "stop": ["<|endoftext|>"]}
-        response = requests.post(STARCODER_API_ENDPOINT, headers=headers, data=json.dumps(data))
+        response = requests.post(
+            STARCODER_API_ENDPOINT, headers=headers, data=json.dumps(data))
         if response.status_code == 200:
             result = response.json()
             completion = result.get("choices", [{}])[0].get("text", "")
@@ -178,12 +209,14 @@ class StarCodeCompletion(BaseTool):
     def _arun(self, code_context: str):
         raise NotImplementedError("StarCodeCompletion does not support async")
 
+
 class StarBugDetection(BaseTool):
     name: str = "star_bug_detection"
     description: str = "Uses Together AI StarCoder to detect bugs and provide fixes with higher accuracy"
 
     def _run(self, code: str) -> str:
-        headers = {"Authorization": f"Bearer {os.environ.get('TOGETHER_API_KEY')}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {os.environ.get('TOGETHER_API_KEY')}", "Content-Type": "application/json"}
         STARCODER_API_ENDPOINT = "https://api.together.xyz/v1/completions"
         prompt = f"""
         Analyze the following code for bugs and issues:
@@ -197,7 +230,8 @@ class StarBugDetection(BaseTool):
         """
         data = {"model": "togethercomputer/StarCoder", "prompt": prompt,
                 "max_tokens": 700, "temperature": 0.2, "top_p": 0.95, "stop": ["<|endoftext|>"]}
-        response = requests.post(STARCODER_API_ENDPOINT, headers=headers, data=json.dumps(data))
+        response = requests.post(
+            STARCODER_API_ENDPOINT, headers=headers, data=json.dumps(data))
         if response.status_code == 200:
             result = response.json()
             analysis = result.get("choices", [{}])[0].get("text", "")
@@ -208,12 +242,14 @@ class StarBugDetection(BaseTool):
     def _arun(self, code: str):
         raise NotImplementedError("StarBugDetection does not support async")
 
+
 class StarCodeTesting(BaseTool):
     name: str = "star_code_testing"
     description: str = "Uses Together AI StarCoder API to generate test cases for the provided code"
 
     def _run(self, code: str) -> str:
-        headers = {"Authorization": f"Bearer {os.environ.get('TOGETHER_API_KEY')}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {os.environ.get('TOGETHER_API_KEY')}", "Content-Type": "application/json"}
         STARCODER_API_ENDPOINT = "https://api.together.xyz/v1/completions"
         language = self._detect_language(code)
         prompt = f"""
@@ -226,7 +262,8 @@ class StarCodeTesting(BaseTool):
         """
         data = {"model": "togethercomputer/StarCoder", "prompt": prompt,
                 "max_tokens": 800, "temperature": 0.2, "top_p": 0.95, "stop": ["<|endoftext|>"]}
-        response = requests.post(STARCODER_API_ENDPOINT, headers=headers, data=json.dumps(data))
+        response = requests.post(
+            STARCODER_API_ENDPOINT, headers=headers, data=json.dumps(data))
         if response.status_code == 200:
             result = response.json()
             test_code = result.get("choices", [{}])[0].get("text", "")
@@ -251,6 +288,7 @@ class StarCodeTesting(BaseTool):
     def _arun(self, code: str):
         raise NotImplementedError("StarCodeTesting does not support async")
 
+
 class DocStringGenerator(BaseTool):
     name: str = "docstring_generator"
     description: str = "Generates docstrings for functions and classes"
@@ -272,6 +310,7 @@ class DocStringGenerator(BaseTool):
     def _arun(self, code: str):
         raise NotImplementedError("DocStringGenerator does not support async")
 
+
 class ReadmeGenerator(BaseTool):
     name: str = "readme_generator"
     description: str = "Generates README files for projects"
@@ -288,12 +327,14 @@ class ReadmeGenerator(BaseTool):
         PROJECT INFO:
         {project_info}
         README.md:"""
-        prompt = PromptTemplate(template=template, input_variables=["project_info"])
+        prompt = PromptTemplate(
+            template=template, input_variables=["project_info"])
         chain = LLMChain(llm=llm, prompt=prompt)
         return chain.run(project_info=project_info)
 
     def _arun(self, project_info: str):
         raise NotImplementedError("ReadmeGenerator does not support async")
+
 
 class BugDetector(BaseTool):
     name: str = "bug_detector"
@@ -317,6 +358,7 @@ class BugDetector(BaseTool):
     def _arun(self, code: str):
         raise NotImplementedError("BugDetector does not support async")
 
+
 class CodeFixer(BaseTool):
     name: str = "code_fixer"
     description: str = "Fixes bugs in code"
@@ -329,49 +371,59 @@ class CodeFixer(BaseTool):
         CODE AND BUGS:
         {code_and_bugs}
         FIXED CODE:"""
-        prompt = PromptTemplate(template=template, input_variables=["code_and_bugs"])
+        prompt = PromptTemplate(
+            template=template, input_variables=["code_and_bugs"])
         chain = LLMChain(llm=llm, prompt=prompt)
         return chain.run(code_and_bugs=code_and_bugs)
 
     def _arun(self, code_and_bugs: str):
         raise NotImplementedError("CodeFixer does not support async")
 
+
 class CodeCompleter(BaseTool):
     name: str = "code_completer"
     description: str = "Completes code based on context"
 
     def _run(self, code_context: str) -> str:
-        llm = get_llm(temperature=0.3, model="togethercomputer/CodeLlama-34b-Instruct")
+        llm = get_llm(temperature=0.3,
+                      model="togethercomputer/CodeLlama-34b-Instruct")
         template = """Complete the following code based on the context. Provide a full implementation that follows best practices.
         CODE CONTEXT:
         {code_context}
         COMPLETED CODE:"""
-        prompt = PromptTemplate(template=template, input_variables=["code_context"])
+        prompt = PromptTemplate(
+            template=template, input_variables=["code_context"])
         chain = LLMChain(llm=llm, prompt=prompt)
         return chain.run(code_context=code_context)
 
     def _arun(self, code_context: str):
         raise NotImplementedError("CodeCompleter does not support async")
 
+
 def initialize_documentation_agent():
     llm = get_llm(temperature=0.2)
     tools = [DocStringGenerator(), ReadmeGenerator()]
     return initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True, handle_parsing_errors=True)
+
 
 def initialize_bug_detection_agent():
     llm = get_llm(temperature=0.1)
     tools = [BugDetector(), CodeFixer(), StarBugDetection(), StarCodeTesting()]
     return initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True, handle_parsing_errors=True)
 
+
 def initialize_code_completion_agent():
-    llm = get_llm(temperature=0.3, model="togethercomputer/CodeLlama-34b-Instruct")
+    llm = get_llm(temperature=0.3,
+                  model="togethercomputer/CodeLlama-34b-Instruct")
     tools = [CodeCompleter(), StarCodeCompletion()]
     return initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True, handle_parsing_errors=True)
+
 
 def initialize_rag_agent(rag_system):
     llm = get_llm(temperature=0.2)
     tools = [RAGQueryTool(rag_system), RAGLoader(rag_system)]
     return initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True, handle_parsing_errors=True)
+
 
 class SimpleAgent:
     def __init__(self, name, system_message, all_agents=None):
@@ -417,7 +469,8 @@ class SimpleAgent:
                 agent_name = agent_name_raw.lower().replace("completer", "completer")
 
             if agent_name in self.all_agents and agent_name != "manager":
-                delegated_response = self.all_agents[agent_name].run(message, history)
+                delegated_response = self.all_agents[agent_name].run(
+                    message, history)
                 return f"Manager: Delegated to {agent_name_raw}\n{delegated_response}"
             else:
                 return f"Manager: Invalid agent '{agent_name_raw}', handling directly\n{self._execute_simple_task(message, history)}"
@@ -440,6 +493,7 @@ class SimpleAgent:
         """
         return self.llm(prompt).strip()
 
+
 class SimpleUserAgent:
     def __init__(self, name="User"):
         self.name = name
@@ -450,13 +504,19 @@ class SimpleUserAgent:
         print(f"{agent.name}'s Response:\n{response}")
         return response
 
+
 def setup_simple_agents():
     agents = {}
-    agents["manager"] = SimpleAgent(name="Manager", system_message="You are the Managerial Agent that coordinates tasks or executes simple ones directly.")
-    agents["code_completer"] = SimpleAgent(name="CodeCompleter", system_message="You are the Code Completion Agent for generating code snippets.")
-    agents["bug_detector"] = SimpleAgent(name="BugDetector", system_message="You are the Bug Detection Agent for finding and fixing code issues.")
-    agents["documentation_agent"] = SimpleAgent(name="DocumentationAgent", system_message="You are the Documentation Agent for creating documentation.")
-    agents["rag_agent"] = SimpleAgent(name="RAGAgent", system_message="You are the RAG Agent for knowledge base queries.")
+    agents["manager"] = SimpleAgent(
+        name="Manager", system_message="You are the Managerial Agent that coordinates tasks or executes simple ones directly.")
+    agents["code_completer"] = SimpleAgent(
+        name="CodeCompleter", system_message="You are the Code Completion Agent for generating code snippets.")
+    agents["bug_detector"] = SimpleAgent(
+        name="BugDetector", system_message="You are the Bug Detection Agent for finding and fixing code issues.")
+    agents["documentation_agent"] = SimpleAgent(
+        name="DocumentationAgent", system_message="You are the Documentation Agent for creating documentation.")
+    agents["rag_agent"] = SimpleAgent(
+        name="RAGAgent", system_message="You are the RAG Agent for knowledge base queries.")
 
     for agent in agents.values():
         agent.all_agents = agents
@@ -464,14 +524,19 @@ def setup_simple_agents():
     agents["user_proxy"] = SimpleUserAgent(name="User")
     return agents
 
+
 def integrate_tools(agents):
-    star_completion_tool = {"name": "star_code_completion", "description": "Get code completion suggestions from Together AI StarCoder API", "func": StarCodeCompletion()._run}
-    star_bug_detection_tool = {"name": "star_bug_detection", "description": "Analyze code for bugs using Together AI StarCoder API", "func": StarBugDetection()._run}
-    star_testing_tool = {"name": "star_code_testing", "description": "Generate test cases using Together AI StarCoder API", "func": StarCodeTesting()._run}
+    star_completion_tool = {"name": "star_code_completion",
+                            "description": "Get code completion suggestions from Together AI StarCoder API", "func": StarCodeCompletion()._run}
+    star_bug_detection_tool = {"name": "star_bug_detection",
+                               "description": "Analyze code for bugs using Together AI StarCoder API", "func": StarBugDetection()._run}
+    star_testing_tool = {"name": "star_code_testing",
+                         "description": "Generate test cases using Together AI StarCoder API", "func": StarCodeTesting()._run}
     agents["code_completer"].register_tool(star_completion_tool)
     agents["bug_detector"].register_tool(star_bug_detection_tool)
     agents["bug_detector"].register_tool(star_testing_tool)
     return agents
+
 
 # Initialize agents globally
 agents = setup_simple_agents()
@@ -479,6 +544,8 @@ agents = integrate_tools(agents)
 manager = agents["manager"]
 
 # Flask API Routes
+
+
 @app.route('/api/code', methods=['POST'])
 def process_code():
     try:
@@ -493,9 +560,11 @@ def process_code():
     except Exception as e:
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
+
 @app.route('/', methods=['GET'])
 def health_check():
     return jsonify({'message': 'Server is running', 'status': 'ok'}), 200
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
